@@ -34,7 +34,7 @@ parser.add_argument('--sigma2', type=float, default=21.0,
 parser.add_argument('--save', '-s', type=str,
                     help='path to save predictions')
 
-device = torch.device("cuda")
+device = torch.device("cpu")
 
 
 def main():

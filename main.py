@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 import torch.distributed as dist
 import torch.utils.data.distributed
-from torch.nn.parallel import DistributedDataParallel
+from torch.nn.parallel import DataParallel
 import torch.backends.cudnn as cudnn
 import numpy as np
 
@@ -56,8 +56,10 @@ def parse_options():
 def main(args):
 
     model = modeling.VOSNet(model=args.model).cuda()
-    model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
-    model = DistributedDataParallel(model, device_ids=[args.local_rank], broadcast_buffers=False)
+#    model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
+    model = DataParallel(model)
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    model = model.to(device)
 
     criterion = CrossEntropy(temperature=args.temperature).cuda()
 
@@ -74,25 +76,24 @@ def main(args):
                                            os.path.join(args.data, 'DAVIS_train/Annotations/480p'),
                                            frame_num=args.frame_num,
                                            color_jitter=args.cj)
-        train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
+#         train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
         train_loader = torch.utils.data.DataLoader(train_dataset,
-                                                   batch_size=args.bs // dist.get_world_size(),
+                                                   batch_size=args.bs, # // dist.get_world_size(),
                                                    shuffle=False,
-                                                   sampler = train_sampler, 
                                                    pin_memory = True,
-                                                   num_workers=8 // dist.get_world_size(),
+                                                   num_workers=8, #  // dist.get_world_size(),
                                                    drop_last=True)
         val_dataset = dataset.DavisTrain(os.path.join(args.data, 'DAVIS_val/JPEGImages/480p'),
                                          os.path.join(args.data, 'DAVIS_val/Annotations/480p'),
                                          frame_num=args.frame_num,
                                          color_jitter=args.cj)
-        val_sampler = torch.utils.data.distributed.DistributedSampler(val_dataset)
+#        val_sampler = torch.utils.data.distributed.DistributedSampler(val_dataset)
         val_loader = torch.utils.data.DataLoader(val_dataset,
-                                                 batch_size=args.bs // dist.get_world_size(),
+                                                 batch_size=args.bs, # // dist.get_world_size(),
                                                  shuffle=False,
-                                                 sampler = val_sampler, 
+                                                 # sampler = val_sampler, 
                                                  pin_memory = True,
-                                                 num_workers=8 // dist.get_world_size(),
+                                                 num_workers=8, # // dist.get_world_size(),
                                                  drop_last=True)
     else:
         raise NotImplementedError
@@ -119,7 +120,7 @@ def main(args):
 
         scheduler.step()
 
-        if dist.get_rank() == 0:
+        if True:
             os.makedirs(args.save_model, exist_ok=True)
             checkpoint_name = 'checkpoint-epoch-{}.pth.tar'.format(epoch)
             save_path = os.path.join(args.save_model, checkpoint_name)
@@ -262,10 +263,10 @@ if __name__ == '__main__':
 
     opt = parse_options()
 
-    torch.cuda.set_device(opt.local_rank)
-    torch.distributed.init_process_group(backend='nccl', init_method='env://')
-    cudnn.benchmark = True
+    # torch.cuda.set_device(opt.local_rank)
+    # torch.distributed.init_process_group(backend='nccl', init_method='env://')
+    # cudnn.benchmark = True
 
-    logger = setup_logger(output=opt.save_model, distributed_rank=dist.get_rank(), name='vos')
+    logger = setup_logger(output=opt.save_model, name='vos')
 
     main(opt)

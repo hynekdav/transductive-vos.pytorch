@@ -87,7 +87,7 @@ class AverageMeter(object):
 def save_prediction(prediction, palette, save_path, save_name, video_name):
     img = Image.fromarray(prediction)
     img = img.convert('L')
-    img.putpalette(palette)
+#    img.putpalette(palette)
     img = img.convert('P')
     video_path = os.path.join(save_path, video_name)
     if not os.path.exists(video_path):

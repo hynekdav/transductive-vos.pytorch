@@ -85,7 +85,9 @@ def prepare_first_frame(curr_video,
                         sigma2=21):
     annotation_list = sorted(os.listdir(annotation_dir))
     first_annotation = Image.open(os.path.join(annotation_dir, annotation_list[curr_video], '00000.png'))
+    first_annotation = first_annotation.convert('L')
     (H, W) = np.asarray(first_annotation).shape
+    print(np.asarray(first_annotation).shape)
     H_d = int(np.ceil(H / 8))
     W_d = int(np.ceil(W / 8))
     palette = first_annotation.getpalette()
